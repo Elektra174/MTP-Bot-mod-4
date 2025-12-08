@@ -5,7 +5,7 @@ import Cerebras from "@cerebras/cerebras_cloud_sdk";
 import OpenAI from "openai";
 import { chatRequestSchema, scenarios, type ChatResponse, type Message, type Session } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { selectBestScript, generateScriptGuidance, getScriptById, type MPTScript } from "./mpt-scripts";
+import { selectBestScript, generateScriptGuidance, getScriptById, findAllMatchingScripts, generateScriptChoiceMessage, type MPTScript, type ScriptMatchResult } from "./mpt-scripts";
 import { 
   createInitialSessionState, 
   detectRequestType, 
@@ -421,12 +421,24 @@ export async function registerRoutes(
           : detectScenario(message);
         
         const requestType = detectRequestType(message);
-        const selectedScript = selectBestScript(message, detectedScenario?.id || null);
+        
+        const matchingScripts = findAllMatchingScripts(message, detectedScenario?.id || null);
+        const selectedScript = matchingScripts.length > 0 
+          ? matchingScripts[0].script 
+          : selectBestScript(message, detectedScenario?.id || null);
         
         const initialState = createInitialSessionState();
         initialState.requestType = requestType;
         initialState.context.originalRequest = message;
         initialState.sessionStarted = true;
+        
+        if (matchingScripts.length > 1) {
+          initialState.context.matchingScripts = matchingScripts.map(m => ({
+            script: { id: m.script.id, name: m.script.name, description: m.script.description },
+            matchedKeywords: m.matchedKeywords,
+            matchScore: m.matchScore
+          }));
+        }
         
         session = {
           id: randomUUID(),
@@ -654,10 +666,38 @@ ${bodyPrompt}
       if (session.scriptId && session.scriptName) {
         const script = getScriptById(session.scriptId);
         if (script) {
-          const scriptGuidance = generateScriptGuidance(script, sessionState.currentQuestionIndex);
+          const scriptGuidance = generateScriptGuidance(script);
+          const hasMultipleMatchingScripts = sessionState.context.matchingScripts && sessionState.context.matchingScripts.length > 1;
           const isProjectionScript = ['shadow-desire', 'light-shadow', 'dark-shadow'].includes(session.scriptId);
           
-          if (isProjectionScript && isNewSession && !sessionState.context.scriptChoiceOffered) {
+          if (hasMultipleMatchingScripts && isNewSession && !sessionState.context.scriptChoiceOffered) {
+            sessionState.context.scriptChoiceOffered = true;
+            sessionStates.set(session.id, sessionState);
+            
+            const matchingScripts = sessionState.context.matchingScripts;
+            let scriptsChoiceText = "";
+            for (let i = 0; i < Math.min(matchingScripts.length, 3); i++) {
+              scriptsChoiceText += `${i + 1}) **${matchingScripts[i].script.name}**: ${matchingScripts[i].script.description}\n`;
+            }
+            
+            contextualPrompt += `\n\n## 🔴🔴🔴 ПРИОРИТЕТ №1: ПРЕДЛОЖИ ВЫБОР НАПРАВЛЕНИЯ! 🔴🔴🔴
+
+**ОБНАРУЖЕНО НЕСКОЛЬКО ПОДХОДЯЩИХ СКРИПТОВ!**
+
+В запросе клиента обнаружены темы, которые могут быть проработаны разными способами.
+
+**ПОДХОДЯЩИЕ НАПРАВЛЕНИЯ:**
+${scriptsChoiceText}
+
+**ТВОЙ ОТВЕТ ДОЛЖЕН БЫТЬ ТАКИМ:**
+
+"Здравствуй. Я слышу тебя. В твоём запросе я вижу несколько возможных направлений для работы:
+
+${scriptsChoiceText}
+Какое из этих направлений тебе ближе? Или опиши, что именно хочешь исследовать."
+
+**НЕ НАЧИНАЙ РАБОТУ ПО СКРИПТУ! СНАЧАЛА ПРЕДЛОЖИ ВЫБОР!**`;
+          } else if (isProjectionScript && isNewSession && !sessionState.context.scriptChoiceOffered) {
             sessionState.context.scriptChoiceOffered = true;
             sessionStates.set(session.id, sessionState);
             

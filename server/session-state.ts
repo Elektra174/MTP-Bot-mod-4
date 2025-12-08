@@ -301,6 +301,11 @@ export interface TherapyContext {
   bodyworkSequence: BodyworkSequenceData;
   scriptChoiceOffered: boolean;
   scriptChoiceAccepted: boolean | null;
+  matchingScripts: Array<{
+    script: { id: string; name: string; description: string };
+    matchedKeywords: string[];
+    matchScore: number;
+  }>;
 }
 
 export interface SessionState {
@@ -1133,6 +1138,7 @@ export function createInitialSessionState(): SessionState {
       },
       scriptChoiceOffered: false,
       scriptChoiceAccepted: null,
+      matchingScripts: [],
       bodyworkSequence: {
         locationAsked: false,
         sizeAsked: false,
