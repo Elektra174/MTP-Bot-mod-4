@@ -518,8 +518,18 @@ export async function registerRoutes(
       
       const authorshipTransform = transformToAuthorship(message);
       
-      const resistanceDetection = detectResistance(message);
-      const abstractDetection = detectAbstractAnswer(message);
+      // ВАЖНО: Детекция сопротивления и абстракций работает ТОЛЬКО после сбора контекста!
+      // На начальных этапах (start_session, collect_context) нужно сначала понять ситуацию клиента
+      const isEarlyStage = sessionState.currentStage === 'start_session' || 
+                           sessionState.currentStage === 'collect_context';
+      
+      // Детектируем только если прошли этап сбора контекста
+      const resistanceDetection = isEarlyStage 
+        ? { detected: false, type: null, phrase: null }
+        : detectResistance(message);
+      const abstractDetection = isEarlyStage
+        ? { detected: false, abstractWords: [] }
+        : detectAbstractAnswer(message);
       const movementImpulseDetected = detectMovementImpulse(message);
       
       const shouldPauseTransition = resistanceDetection.detected || 
