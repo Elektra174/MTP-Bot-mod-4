@@ -13,8 +13,6 @@ import {
   detectResistance,
   detectAbstractAnswer,
   detectMovementImpulse,
-  detectGreeting,
-  isSubstantiveRequest,
   getResistanceExplorationPrompt,
   getDeepeningQuestion,
   getBodyBeforeImagePrompt,
@@ -46,9 +44,9 @@ import {
   type BodyworkSequenceData
 } from "./session-state";
 
-const cerebrasClient = process.env.CEREBRAS_API_KEY ? new Cerebras({
+const cerebrasClient = new Cerebras({
   apiKey: process.env.CEREBRAS_API_KEY,
-}) : null;
+});
 
 // Algion API as fallback when Cerebras rate limits are hit
 const algionClient = process.env.ALGION_API_KEY ? new OpenAI({
@@ -518,18 +516,8 @@ export async function registerRoutes(
       
       const authorshipTransform = transformToAuthorship(message);
       
-      // ВАЖНО: Детекция сопротивления и абстракций работает ТОЛЬКО после сбора контекста!
-      // На начальных этапах (start_session, collect_context) нужно сначала понять ситуацию клиента
-      const isEarlyStage = sessionState.currentStage === 'start_session' || 
-                           sessionState.currentStage === 'collect_context';
-      
-      // Детектируем только если прошли этап сбора контекста
-      const resistanceDetection = isEarlyStage 
-        ? { detected: false, type: null, phrase: null }
-        : detectResistance(message);
-      const abstractDetection = isEarlyStage
-        ? { detected: false, abstractWords: [] }
-        : detectAbstractAnswer(message);
+      const resistanceDetection = detectResistance(message);
+      const abstractDetection = detectAbstractAnswer(message);
       const movementImpulseDetected = detectMovementImpulse(message);
       
       const shouldPauseTransition = resistanceDetection.detected || 
@@ -842,9 +830,6 @@ ${scriptGuidance}`;
       ];
       
       const streamWithCerebras = async () => {
-        if (!cerebrasClient) {
-          throw new Error("Cerebras API key not configured");
-        }
         const stream = await cerebrasClient.chat.completions.create({
           model: "qwen-3-32b",
           messages: apiMessages,
