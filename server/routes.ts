@@ -13,6 +13,8 @@ import {
   detectResistance,
   detectAbstractAnswer,
   detectMovementImpulse,
+  detectGreeting,
+  isSubstantiveRequest,
   getResistanceExplorationPrompt,
   getDeepeningQuestion,
   getBodyBeforeImagePrompt,
@@ -44,9 +46,9 @@ import {
   type BodyworkSequenceData
 } from "./session-state";
 
-const cerebrasClient = new Cerebras({
+const cerebrasClient = process.env.CEREBRAS_API_KEY ? new Cerebras({
   apiKey: process.env.CEREBRAS_API_KEY,
-});
+}) : null;
 
 // Algion API as fallback when Cerebras rate limits are hit
 const algionClient = process.env.ALGION_API_KEY ? new OpenAI({
@@ -830,6 +832,9 @@ ${scriptGuidance}`;
       ];
       
       const streamWithCerebras = async () => {
+        if (!cerebrasClient) {
+          throw new Error("Cerebras API key not configured");
+        }
         const stream = await cerebrasClient.chat.completions.create({
           model: "qwen-3-32b",
           messages: apiMessages,

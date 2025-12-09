@@ -37,13 +37,15 @@ export interface StageConfig {
 export const MPT_STAGE_CONFIG: Record<MPTStage, StageConfig> = {
   start_session: {
     name: 'start_session',
-    russianName: 'Создание пространства сессии',
-    goal: 'Создать терапевтическое пространство и рамку сессии',
+    russianName: 'Начало сессии',
+    goal: 'Установить контакт, тепло поприветствовать клиента и мягко узнать, что его привело',
     questions: [
-      'Привет! Рад тебя видеть. Мы с тобой сейчас в сессии — у нас есть время и пространство для работы. Расскажи, что тебя сейчас беспокоит или над чем хотел бы поработать сегодня?'
+      'Здравствуй! Рад тебя видеть. Как ты сегодня?',
+      'Расскажи, что привело тебя ко мне?',
+      'Чем могу помочь?'
     ],
-    minResponses: 1,
-    transitionCriteria: ['Клиент озвучил запрос или тему для работы']
+    minResponses: 2,
+    transitionCriteria: ['Клиент озвучил КОНКРЕТНЫЙ запрос или тему для работы (не просто приветствие)']
   },
   collect_context: {
     name: 'collect_context',
@@ -618,6 +620,92 @@ export function detectMovementImpulse(message: string): boolean {
   return false;
 }
 
+export function detectGreeting(message: string): boolean {
+  const normalized = message.toLowerCase().trim();
+  const greetingPatterns = [
+    /^привет\.?!?$/,
+    /^приве$/,
+    /^здравствуй(те)?\.?!?$/,
+    /^добрый (день|вечер|утро)\.?!?$/,
+    /^доброе утро\.?!?$/,
+    /^добрый день\.?!?$/,
+    /^добрый вечер\.?!?$/,
+    /^хай\.?!?$/,
+    /^хей\.?!?$/,
+    /^hello\.?!?$/,
+    /^hi\.?!?$/,
+    /^приветствую\.?!?$/,
+    /^салют\.?!?$/,
+    /^ку\.?!?$/,
+  ];
+  
+  for (const pattern of greetingPatterns) {
+    if (pattern.test(normalized)) {
+      return true;
+    }
+  }
+  
+  if (normalized.length <= 15) {
+    const shortGreetings = ['привет', 'приве', 'здравствуй', 'здравствуйте', 'добрый день', 
+      'добрый вечер', 'доброе утро', 'хай', 'хей', 'hello', 'hi', 'приветствую', 'салют', 'ку'];
+    for (const greeting of shortGreetings) {
+      if (normalized.includes(greeting)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+export function isSubstantiveRequest(message: string): boolean {
+  if (detectGreeting(message)) {
+    return false;
+  }
+  
+  const requestIndicators = [
+    /хочу/i,
+    /не могу/i,
+    /проблема/i,
+    /беспокоит/i,
+    /тревожит/i,
+    /чувствую/i,
+    /ощущаю/i,
+    /устал/i,
+    /страдаю/i,
+    /боюсь/i,
+    /злюсь/i,
+    /грущу/i,
+    /одинок/i,
+    /отношения/i,
+    /работа/i,
+    /семья/i,
+    /родители/i,
+    /ребенок/i,
+    /муж|жена/i,
+    /денег|деньги/i,
+    /здоровье/i,
+    /сложно/i,
+    /тяжело/i,
+    /трудно/i,
+    /запутал/i,
+    /не понимаю/i,
+    /выгорание/i,
+    /депресс/i,
+    /тревог/i,
+    /паник/i,
+    /страх/i,
+  ];
+  
+  for (const pattern of requestIndicators) {
+    if (pattern.test(message)) {
+      return true;
+    }
+  }
+  
+  return message.length > 30;
+}
+
 export function getResistanceExplorationPrompt(resistanceType: string): string {
   const prompts: Record<string, string> = {
     'sabotage': 'СТОП. Это важно. Давай исследуем этот саботаж прямо сейчас. Если бы ты СТАЛ этой частью, которая саботирует — как бы ты себя чувствовал? Что бы она делала и ЗАЧЕМ?',
@@ -1008,7 +1096,9 @@ export function shouldTransitionToNextStage(state: SessionState): boolean {
   
   switch (state.currentStage) {
     case 'start_session':
-      return state.context.originalRequest !== null;
+      return state.context.originalRequest !== null && 
+             isSubstantiveRequest(state.lastClientResponse) &&
+             !detectGreeting(state.lastClientResponse);
     case 'collect_context':
       return state.importanceRating !== null || state.stageResponseCount >= 3;
     case 'clarify_request':
@@ -1177,10 +1267,13 @@ export function generateStagePrompt(state: SessionState): string {
   switch (state.currentStage) {
     case 'start_session':
       prompt += `
-- Это начало сессии. Создай терапевтическое пространство.
-- Тепло поприветствуй клиента и обозначь рамку сессии.
-- Спроси, что беспокоит или над чем хотел бы поработать.
-- НЕ ЗАДАВАЙ СЛОЖНЫХ ВОПРОСОВ — дай клиенту просто рассказать.
+- Это начало сессии. ЕСТЕСТВЕННО РЕАГИРУЙ НА КЛИЕНТА.
+- Если клиент просто поздоровался ("привет", "здравствуй", "добрый день") — ПРОСТО ПОЗДОРОВАЙСЯ В ОТВЕТ тепло и дружелюбно. Скажи что рад видеть. НЕ ЗАДАВАЙ СРАЗУ ВОПРОСОВ О ПРОБЛЕМАХ!
+- После приветствия МЯГКО спроси: "Как ты сегодня? Что привело тебя ко мне?" или "Рад тебя видеть! Расскажи, что у тебя на душе?"
+- Если клиент продолжает отвечать кратко или непонятно — УТОЧНЯЙ мягко, не давя: "Расскажи подробнее, чем могу помочь?"
+- ТОЛЬКО когда клиент СФОРМУЛИРОВАЛ конкретный запрос или тему — переходи к следующему этапу.
+- НЕ ЗАДАВАЙ СЛОЖНЫХ ТЕРАПЕВТИЧЕСКИХ ВОПРОСОВ СРАЗУ — сначала просто пообщайся по-человечески.
+- Примеры правильных ответов на "привет": "Здравствуй! Рад тебя видеть. Как ты сегодня?", "Привет! Проходи, располагайся. Что привело тебя?"
 `;
       break;
       

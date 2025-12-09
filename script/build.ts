@@ -5,6 +5,7 @@ import { rm, readFile } from "fs/promises";
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
 const allowlist = [
+  "@cerebras/cerebras_cloud_sdk",
   "@google/generative-ai",
   "axios",
   "connect-pg-simple",
@@ -15,6 +16,7 @@ const allowlist = [
   "express",
   "express-rate-limit",
   "express-session",
+  "groq-sdk",
   "jsonwebtoken",
   "memorystore",
   "multer",
