@@ -6,26 +6,65 @@ This is an AI-powered therapeutic chatbot application implementing Meta-Personal
 
 The system guides users through evidence-based therapeutic protocols including work with burnout, anxiety management, relationship difficulties, and self-identity crises. It follows strict MPT methodology principles focused on identifying deep needs, working with bodily sensations and emotions, and developing constructive strategies.
 
-## Recent Changes (December 08, 2025)
+## Recent Changes (December 10, 2025)
 
-**MPT Methodology Improvements**: Enhanced the bot to work as a real MPT therapist based on detailed session analysis
-- Added 5 key principles for real MPT therapy: depth analysis, resistance handling, body work sequence, process-focused work, authorship return
-- Implemented **Resistance Detection Protocol**: Bot now detects sabotage, internal fight, avoidance patterns and immediately stops to explore them
-- Implemented **Abstract Answer Detection**: Bot no longer accepts superficial answers like "freedom", "joy", "happiness" - forces deepening with circular questions
-- Implemented **Movement Impulse Detection**: Ensures body work is completed before moving to metaphor/image creation
-- Added **Stage Transition Pause**: Bot pauses stage transitions when resistance/abstract answers are detected to fully explore them
-- New functions in session-state.ts: detectResistance(), detectAbstractAnswer(), detectMovementImpulse(), getResistanceExplorationPrompt(), getDeepeningQuestion()
-- Dynamic contextual prompts now guide the AI to follow proper MPT methodology in real-time
+**Therapist Bot Improvements (Latest)**:
+- **Enhanced session finale**: Bot now PROACTIVELY offers homework assignments and practice recommendations at the end of each session (without waiting for client to ask)
+- **Next session suggestions**: Bot now automatically proposes topics for follow-up sessions
+- **Energy-first metaphor work**: When client describes an image with energy inside (e.g., "reactor with energy", "container with light"), bot now suggests becoming the ENERGY directly rather than the external form
+- **Better question handling**: Improved responses to client questions about methodology - more natural, explanatory answers with acknowledgment when client suggests better approaches
+- **Flexible response rules expanded**: Added examples for handling "why didn't you ask...?" type questions
 
-**Previous: Project Import Completed**
+**Practice Mode Updates**:
+- Changed practice mode trigger message to: "Хочу попрактиковаться в роли терапевта, а ты будешь клиентом."
+- Fixed initial response to: "Хорошо, я клиент — ты МПТ терапевт, начинай!"
+- Added special handling to return fixed response on practice mode activation
+
+**Session Persistence for Work Modes**:
+- Mode sessions (Обучение МПТ, Практика терапии, Супервизия) now save to localStorage
+- When clicking a mode, continues from existing session if one exists
+- Each mode shows "Продолжить..." when a saved session exists
+- Added reset button (rotate icon) per mode to clear and start fresh
+- Session history displays correct mode names
+- Data persists across browser sessions and page reloads
+
+**UI/UX Improvements**:
+- Made "Режимы работы" (Work modes) a collapsible dropdown in sidebar
+- Added "Очистить" (Clear) button to session history for clearing all history at once
+- Fixed mobile header layout - hides phase badge on small screens, compact button with icon only
+- Improved responsive design for session header to prevent overlap on mobile devices
+
+**Multi-Mode Bot Implementation**: Added 4 operational modes with automatic mode detection
+- **Therapist Mode** (default): Conducts MPT therapy sessions with clients
+- **Educator Mode**: Answers questions about MPT methodology and theory
+- **Practice Client Mode**: Bot acts as a client so users can practice therapy skills
+- **Supervisor Mode**: Analyzes therapy sessions and provides recommendations
+
+**Flexible Response System**: Bot can now understand context and respond naturally
+- Added FLEXIBLE_RESPONSE_RULES to therapist mode for answering client questions mid-session
+- Mode detection based on message keywords (e.g., "что такое МПТ", "хочу попрактиковаться")
+- Per-session mode tracking with ability to switch modes
+- Mode exit commands to return to therapist mode
+
+**AI Provider Fallback**: Automatic switching from Cerebras to Algion on any API error
+- 5-minute fallback period before retrying Cerebras
+- Graceful degradation ensures continuous service
+
+**UI Updates**: Mode selection buttons added to sidebar (now collapsible)
+- "Обучение МПТ" for educator mode
+- "Практика терапии" for practice client mode  
+- "Супервизия" for supervisor mode
+
+**Previous Changes (December 08, 2025)**
+
+**Project Import Completed**: Successfully imported GitHub repository and configured for Replit environment
 - Installed all npm dependencies (508 packages including React, Express, Tailwind, Radix UI, Cerebras SDK)
+- Created .gitignore file for Node.js project with proper exclusions
+- Verified Vite configuration already has Replit proxy compatibility (allowedHosts: true)
 - Configured development workflow "Start application" running on port 5000 with webview output
 - Configured CEREBRAS_API_KEY and ALGION_API_KEY environment secrets for AI services
-- Successfully tested application - Russian language UI loads correctly with full MPT interface
-- Configured deployment settings for production (autoscale deployment with npm build)
-- Database already provisioned (PostgreSQL with Drizzle ORM configured)
 
-**Status**: Application is fully functional with improved MPT methodology. The chatbot now properly explores resistance, deepens abstract answers, and follows the correct Body → Movement → Image → Metaposition sequence.
+**Status**: Application is fully functional with multi-mode support. The MPT Therapist chatbot supports therapy sessions, methodology education, therapist practice, and session supervision.
 
 ## User Preferences
 
